@@ -1,12 +1,4 @@
 use std::fmt;
-use crate::Pieces::Rook;
-use crate::Pieces::Bishop;
-use crate::Pieces::Knight;
-use crate::Pieces::King;
-use crate::Pieces::Queen;
-use crate::Pieces::Pawn;
-use crate::Colour::Black;
-use crate::Colour::White;
 
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -18,22 +10,26 @@ pub enum GameState { //Olika faser som spelet kan befinna sig i
 }
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Colour{ //De olika färger som spelaren kan köra som samt de färger som en pjäs kan vara
-    Black,
-    White
+    Black, White
 }
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Pieces{ //Olika roller som en pjäs kan ha
-    King,
-    Queen,
-    Knight,
-    Bishop,
-    Rook,
-    Pawn
+pub enum Roles{ //Olika roller som en pjäs kan ha
+    King, Queen, Knight, Bishop, Rook, Pawn
 }
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Piece{ //en pjäs har en roll och en färg
-    role: Pieces,
+    role: Roles,
     colour: Colour
+}
+
+impl Piece {
+    fn new(role: Roles, colour: Colour) -> Piece{
+        Piece{
+            role,
+            colour
+        }
+    }
+    
 }
 /* IMPORTANT:
  * - Document well!
@@ -56,28 +52,28 @@ impl Game {
             state: GameState::InProgress,
             activeColour: Colour::White,
             board: {let mut array = [None; 64]; //skapar brädet med pjäser på rätt plats
-                array[0] = Some(Piece {role: Rook, colour: Black});
-                array[1] = Some(Piece {role: Knight, colour: Black});
-                array[2] = Some(Piece {role: Bishop, colour: Black});
-                array[3] = Some(Piece {role: Queen, colour: Black});
-                array[4] = Some(Piece {role: King, colour: Black});
-                array[5] = Some(Piece {role: Bishop, colour: Black});
-                array[6] = Some(Piece {role: Knight, colour: Black});
-                array[7] = Some(Piece {role: Rook, colour: Black});
+                array[0] = Some(Piece::new(Roles::Rook, Colour::Black));
+                array[1] = Some(Piece::new(Roles::Knight, Colour::Black));
+                array[2] = Some(Piece::new(Roles::Bishop, Colour::Black)); 
+                array[3] = Some(Piece::new(Roles::Queen, Colour::Black));
+                array[4] = Some(Piece::new(Roles::King, Colour::Black));
+                array[5] = Some(Piece::new(Roles::Bishop, Colour::Black));
+                array[6] = Some(Piece::new(Roles::Knight, Colour::Black));
+                array[7] = Some(Piece::new(Roles::Rook, Colour::Black));
                 for i in 8..16{
-                    array[i] = Some(Piece {role: Pawn, colour: Black});
+                    array[i] = Some(Piece::new(Roles::Pawn, Colour::Black));
                 }
                 for i in 48..56{
-                    array[i] = Some(Piece {role: Pawn, colour: White});
+                    array[i] =Some(Piece::new(Roles::Pawn, Colour::White));
                 }
-                array[56] = Some(Piece {role: Rook, colour: White});
-                array[57] = Some(Piece {role: Knight, colour: White});
-                array[58] = Some(Piece {role: Bishop, colour: White});
-                array[59] = Some(Piece {role: Queen, colour: White});
-                array[60] = Some(Piece {role: King, colour: White});
-                array[61] = Some(Piece {role: Bishop, colour: White});
-                array[62] = Some(Piece {role: Knight, colour: White});
-                array[63] = Some(Piece {role: Rook, colour: White});
+                array[56] = Some(Piece::new(Roles::Rook, Colour::White));
+                array[57] = Some(Piece::new(Roles::Knight, Colour::White));
+                array[58] = Some(Piece::new(Roles::Bishop, Colour::White));
+                array[59] = Some(Piece::new(Roles::Queen, Colour::White));
+                array[60] = Some(Piece::new(Roles::King, Colour::White));
+                array[61] = Some(Piece::new(Roles::Bishop, Colour::White));
+                array[62] = Some(Piece::new(Roles::Knight, Colour::White));
+                array[63] = Some(Piece::new(Roles::Rook, Colour::White));
                 array
             }
             //...
@@ -128,21 +124,30 @@ impl fmt::Debug for Game {
         let mut result: Vec<&str> = Vec::with_capacity(64);
         result.push("\n /-----------------\\ \n |");
         for i in 0..64{
-            match self.board[i] {
-                Some(Piece {role: Rook, colour: Black}) => result.push("\u{2656}"),
-                Some(Piece {role: Knight, colour: Black}) => result.push("\u{2658}"),
-                Some(Piece {role: Bishop, colour: Black}) => result.push("\u{2657}"),
-                Some(Piece {role: King, colour: Black}) => result.push("\u{2654}"),
-                Some(Piece {role: Queen, colour: Black}) => result.push("\u{2655}"),
-                Some(Piece {role: Pawn, colour: Black}) => result.push("\u{2659}"),
-                Some(Piece {role: Rook, colour: White}) => result.push("\u{265C}"),
-                Some(Piece {role: Knight, colour: White}) => result.push("\u{265E}"),
-                Some(Piece {role: Bishop, colour: White}) => result.push("\u{265D}"),
-                Some(Piece {role: King, colour: White}) => result.push("\u{265A}"),
-                Some(Piece {role: Queen, colour: White}) => result.push("\u{265B}"),
-                Some(Piece {role: Pawn, colour: White}) => result.push("\u{265F}"),
-                None => result.push("*"),
-            };
+            if let Some(Piece) = &self.board[i]{
+                match Piece.colour {
+                    Colour::Black => match Piece.role {
+                        Roles::Rook => result.push("\u{2656}"),
+                        Roles::Knight => result.push("\u{2658}"),
+                        Roles::Bishop => result.push("\u{2657}"),
+                        Roles::King => result.push("\u{2654}"),
+                        Roles::Queen => result.push("\u{2655}"),
+                        Roles::Pawn => result.push("\u{2659}"),
+                    }
+                    Colour::White => match Piece.role {
+                        Roles::Rook => result.push("\u{265C}"),
+                        Roles::Knight => result.push("\u{265E}"),
+                        Roles::Bishop => result.push("\u{265D}"),
+                        Roles::King => result.push("\u{265A}"),
+                        Roles::Queen => result.push("\u{265B}"),
+                        Roles::Pawn => result.push("\u{265F}"),
+                        
+                    }
+                }
+            }
+            else{
+                result.push("*");
+            }
             if i == 7 || i == 15 || i == 23 || i == 31 || i== 39 || i == 47 || i == 55{
                 result.push("| \n |");
             }
@@ -158,7 +163,6 @@ impl fmt::Debug for Game {
 
         write!(f, "{}", resultString)
         
-        //write!(f, "{:?}", self.board)
     }
 }
 
