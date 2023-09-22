@@ -78,7 +78,6 @@ impl Game {
                 array[63] = Some(Piece::new(Roles::Rook, Colour::White));
                 array
             }
-            //...
         }
     }
 
