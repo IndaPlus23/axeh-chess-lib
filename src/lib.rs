@@ -1,4 +1,6 @@
+use core::num;
 use std::fmt;
+
 
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -19,7 +21,7 @@ pub enum Roles{ //Olika roller som en pjäs kan ha
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Piece{ //en pjäs har en roll och en färg
     role: Roles,
-    colour: Colour
+    colour: Colour,
 }
 
 impl Piece {
@@ -80,10 +82,46 @@ impl Game {
         }
     }
 
+    pub fn chess_position_to_number(chess_position: &str) -> usize {
+        let filePlaceholder = chess_position.chars().nth(0);
+        let rankPlaceholder = chess_position.chars().nth(1);
+    
+        let file = match filePlaceholder {
+            Some(c) => c as char,
+            None => 'a'
+        };
+        let rank = match rankPlaceholder {
+            Some(c) => c as char,
+            None => '1'
+        };
+        let file_num = match file {
+            'a'..='h' => file as u8 - 'a' as u8,
+            _ => 0
+        };
+    
+        let rank_num = match rank {
+            '1'..='8' => '8' as u8 - rank as u8,
+            _ => 99
+        };
+    
+        let numerical_position:usize = (rank_num * 8 + file_num) as usize;
+    
+        numerical_position
+    }
+
     /// If the current game state is `InProgress` and the move is legal, 
     /// move a piece and return the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
-        None
+        let from = Self::chess_position_to_number(_from);
+        let to = Self::chess_position_to_number(_to);
+
+        let movedPiece = self.board[from];
+
+        self.board[from] = None;
+
+        self.board[to] = movedPiece;
+        
+        Some(GameState::InProgress)
     }
 
     /// (Optional but recommended) Set the piece type that a pawn becames following a promotion.
@@ -186,7 +224,11 @@ mod tests {
     #[test]
     fn game_in_progress_after_init() {
 
-        let game = Game::new();
+        let mut game = Game::new();
+
+        println!("{:?}", game);
+
+        game.make_move("a7", "h1");
 
         println!("{:?}", game);
 
