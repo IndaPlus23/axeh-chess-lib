@@ -1,5 +1,5 @@
 use core::num;
-use std::fmt;
+use std::{fmt, iter::FlatMap};
 
 
 
@@ -21,14 +21,17 @@ pub enum Roles{ //Olika roller som en pjäs kan ha
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Piece{ //en pjäs har en roll och en färg
     role: Roles,
-    colour: Colour,
+    colour: Colour, 
+    hasMoved: bool
+    //lägg till moved
 }
 
 impl Piece {
-    fn new(role: Roles, colour: Colour) -> Piece{
+    fn new(role: Roles, colour: Colour, hasMoved: bool) -> Piece{
         Piece{
             role,
-            colour
+            colour,
+            hasMoved
         }
     }
     
@@ -54,34 +57,34 @@ impl Game {
             state: GameState::InProgress,
             activeColour: Colour::White,
             board: {let mut array = [None; 64]; //skapar brädet med pjäser på rätt plats
-                array[0] = Some(Piece::new(Roles::Rook, Colour::Black));
-                array[1] = Some(Piece::new(Roles::Knight, Colour::Black));
-                array[2] = Some(Piece::new(Roles::Bishop, Colour::Black)); 
-                array[3] = Some(Piece::new(Roles::Queen, Colour::Black));
-                array[4] = Some(Piece::new(Roles::King, Colour::Black));
-                array[5] = Some(Piece::new(Roles::Bishop, Colour::Black));
-                array[6] = Some(Piece::new(Roles::Knight, Colour::Black));
-                array[7] = Some(Piece::new(Roles::Rook, Colour::Black));
+                array[0] = Some(Piece::new(Roles::Rook, Colour::Black, false));
+                array[1] = Some(Piece::new(Roles::Knight, Colour::Black, false));
+                array[2] = Some(Piece::new(Roles::Bishop, Colour::Black, false)); 
+                array[3] = Some(Piece::new(Roles::Queen, Colour::Black, false));
+                array[4] = Some(Piece::new(Roles::King, Colour::Black, false));
+                array[5] = Some(Piece::new(Roles::Bishop, Colour::Black, false));
+                array[6] = Some(Piece::new(Roles::Knight, Colour::Black, false));
+                array[7] = Some(Piece::new(Roles::Rook, Colour::Black, false));
                 for i in 8..16{
-                    array[i] = Some(Piece::new(Roles::Pawn, Colour::Black));
+                    array[i] = Some(Piece::new(Roles::Pawn, Colour::Black, false));
                 }
                 for i in 48..56{
-                    array[i] =Some(Piece::new(Roles::Pawn, Colour::White));
+                    array[i] =Some(Piece::new(Roles::Pawn, Colour::White, false));
                 }
-                array[56] = Some(Piece::new(Roles::Rook, Colour::White));
-                array[57] = Some(Piece::new(Roles::Knight, Colour::White));
-                array[58] = Some(Piece::new(Roles::Bishop, Colour::White));
-                array[59] = Some(Piece::new(Roles::Queen, Colour::White));
-                array[60] = Some(Piece::new(Roles::King, Colour::White));
-                array[61] = Some(Piece::new(Roles::Bishop, Colour::White));
-                array[62] = Some(Piece::new(Roles::Knight, Colour::White));
-                array[63] = Some(Piece::new(Roles::Rook, Colour::White));
+                array[56] = Some(Piece::new(Roles::Rook, Colour::White, false));
+                array[57] = Some(Piece::new(Roles::Knight, Colour::White, false));
+                array[58] = Some(Piece::new(Roles::Bishop, Colour::White, false));
+                array[59] = Some(Piece::new(Roles::Queen, Colour::White, false));
+                array[60] = Some(Piece::new(Roles::King, Colour::White, false));
+                array[61] = Some(Piece::new(Roles::Bishop, Colour::White, false));
+                array[62] = Some(Piece::new(Roles::Knight, Colour::White, false));
+                array[63] = Some(Piece::new(Roles::Rook, Colour::White, false));
                 array
             }
         }
     }
 
-    pub fn chess_position_to_number(chess_position: &str) -> usize {
+    pub fn chessPosToNum(&self, chess_position: &str) -> usize {
         let filePlaceholder = chess_position.chars().nth(0);
         let rankPlaceholder = chess_position.chars().nth(1);
     
@@ -107,12 +110,28 @@ impl Game {
     
         numerical_position
     }
+    pub fn numToChessPos(&self, _postion: usize) -> String{
+        let rank = 8 - (_postion / 8);
+        let field = match _postion % 8 {
+            0 => 'a',
+            1 => 'b',
+            2 => 'c',
+            3 => 'd',
+            4 => 'e',
+            5 => 'f',
+            6 => 'g',
+            7 => 'h',
+            _ => 'a'
+        };
+        let chessPos = format!("{}{}", field, rank);
+        chessPos   
+    }
 
     /// If the current game state is `InProgress` and the move is legal, 
     /// move a piece and return the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
-        let from = Self::chess_position_to_number(_from);
-        let to = Self::chess_position_to_number(_to);
+        let from = self.chessPosToNum(_from);
+        let to = self.chessPosToNum(_to);
 
         let movedPiece = self.board[from];
 
@@ -138,7 +157,111 @@ impl Game {
     /// 
     /// (optional) Implement en passant and castling.
     pub fn get_possible_moves(&self, _postion: &str) -> Option<Vec<String>> {
-        None
+        let position = self.chessPosToNum(_postion);
+        let mut moves: Vec<String> = Vec::new();
+
+        if let Some(piece) = self.board[position]{
+            match piece.role{
+                Roles::Pawn => match piece.colour {
+                    Colour::White => {                        
+                        if position >= 8{
+                            if self.board[position-8].is_none() {
+                                moves.push(self.numToChessPos(position-8));
+                            }
+                        }
+                        if position >= 9{
+                            if let Some(enePiece) = self.board[position-9]{
+                                if enePiece.colour != piece.colour{
+                                    moves.push(self.numToChessPos(position-9));
+                                }
+                            }
+                        }
+                        if position > 7{
+                            if let Some(enePiece) = self.board[position-7]{
+                                if enePiece.colour != piece.colour{
+                                    moves.push(self.numToChessPos(position-7));
+                                }
+                            }
+                        }
+                        if piece.hasMoved == false{
+                            if self.board[position-(8*2)].is_none(){
+                                moves.push(self.numToChessPos(position-(8*2)));
+                            }
+                        }
+                    }
+                    Colour::Black =>{
+                        if (position + 8) <= 63 {
+                            if self.board[position+8].is_none() {
+                                moves.push(self.numToChessPos(position+8));
+                            }
+                        }
+                        if (position+9) <= 63{
+                            if let Some(enePiece) = self.board[position+9]{
+                                if enePiece.colour != piece.colour{
+                                    moves.push(self.numToChessPos(position+9));
+                                }
+                            }
+                        }
+                        if (position+7) < 63{
+                            if let Some(enePiece) = self.board[position+7]{
+                                if enePiece.colour != piece.colour{
+                                    moves.push(self.numToChessPos(position+7));
+                                }
+                            }
+                        }
+                        if piece.hasMoved == false{
+                            if self.board[position+(8*2)].is_none(){
+                                moves.push(self.numToChessPos(position+(8*2)));
+                            }
+                        }
+                    }
+                }
+                Roles::King => {
+                    if position > 8 && position < 55 && position % 8 != 0 && (position+1) % 8 != 0{ //fall där kung inte nuddar kant
+                        let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9];
+                        for i in 0..list.len(){
+                            let index:i16 = position as i16 + list[i];
+                            if self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour{
+                                moves.push(self.numToChessPos(index as usize));
+                            }
+                        }
+                    }else if (position >= 8 || position == 0) && position % 8 == 0{//fall där kung nuddar vänster kant
+                        let list: [i16; 5] = [-8, -7, 1, 8, 9];
+                        for i in 0..list.len(){
+                            let index:i16 = position as i16 + list[i];
+                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                                moves.push(self.numToChessPos(index as usize));
+                            }
+                        }
+                    }else if (position > 8 || position == 7) && (position+1) % 8 == 0{//fall där kung nuddar vänster kant
+                        let list: [i16; 5] = [-9, -8, -1, 7, 8];
+                        for i in 0..list.len(){
+                            let index:i16 = position as i16 + list[i];
+                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                                moves.push(self.numToChessPos(index as usize));
+                            }
+                        }
+                    }else{
+                        let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9]; //resterande fall
+                        for i in 0..list.len(){
+                            let index:i16 = position as i16 + list[i];
+                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                                moves.push(self.numToChessPos(index as usize));
+                            }
+                        }
+                    }
+                }, //ordningen jag ska göra metodiken för possible moves
+                Roles::Rook => (),
+                Roles::Bishop => (),
+                Roles::Queen => (),
+                Roles::Knight => (),
+                
+            }
+        }
+
+        println!("Possible moves for king at {}: {:?}", _postion, moves);
+        //kolla vilken pjäs som är på positionen, ställ upp match för pjäsen, moved på pawn
+        Some(moves)
     }
 }
 
@@ -226,10 +349,14 @@ mod tests {
         let mut game = Game::new();
 
         println!("{:?}", game);
-
-        game.make_move("a7", "h1");
-
+        //game.make_move("e1", "b8");
+        game.make_move("d1", "b8");
+        game.make_move("d2", "b8");
+        game.make_move("e2", "b8");
+        game.make_move("f2", "b8");
+        game.make_move("f1", "b8");
         println!("{:?}", game);
+        game.get_possible_moves("e1");        
 
         assert_eq!(game.get_game_state(), GameState::InProgress);
     }
