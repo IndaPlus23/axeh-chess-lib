@@ -1,5 +1,5 @@
 use core::num;
-use std::{fmt, iter::FlatMap};
+use std::{fmt, iter::FlatMap, f32::consts::PI};
 
 
 
@@ -251,7 +251,58 @@ impl Game {
                         }
                     }
                 }, //ordningen jag ska göra metodiken för possible moves
-                Roles::Rook => (),
+                Roles::Rook => {
+                    for i in 1..8{
+                        let pIndex = position + 8*i;
+                        if pIndex <= 63 && self.board[pIndex].is_none(){
+                            moves.push(self.numToChessPos(pIndex))
+                        } else if  pIndex <= 63 && self.board[pIndex].unwrap().colour != piece.colour{
+                            moves.push(self.numToChessPos(pIndex));
+                            break;
+                        }else if  pIndex <= 63 && self.board[pIndex].unwrap().colour == piece.colour{
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let nIndex:i32 = position as i32 - 8*i;
+                        if nIndex >= 0 && self.board[nIndex as usize].is_none(){
+                            moves.push(self.numToChessPos(nIndex as usize))
+                        } else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour != piece.colour{
+                            moves.push(self.numToChessPos(nIndex as usize));
+                            break;
+                        }else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour == piece.colour{
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let rIndex = position + i;
+                        if rIndex <= 63 && self.board[rIndex].is_none(){
+                            moves.push(self.numToChessPos(rIndex));
+                            if (rIndex+1) % 8 == 0{
+                                break;
+                            }
+                        } else if self.board[rIndex].unwrap().colour != piece.colour{
+                            moves.push(self.numToChessPos(rIndex));
+                            break;
+                        }else if self.board[rIndex].unwrap().colour == piece.colour{
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let lIndex = position - i;
+                        if lIndex <= 63 && self.board[lIndex].is_none(){
+                            moves.push(self.numToChessPos(lIndex));
+                            if lIndex % 8 == 0{
+                                break;
+                            }
+                        } else if self.board[lIndex].unwrap().colour != piece.colour{
+                            moves.push(self.numToChessPos(lIndex));
+                            break;
+                        }else if self.board[lIndex].unwrap().colour == piece.colour{
+                            break;
+                        }
+                    }
+                },
                 Roles::Bishop => (),
                 Roles::Queen => (),
                 Roles::Knight => (),
@@ -349,14 +400,10 @@ mod tests {
         let mut game = Game::new();
 
         println!("{:?}", game);
-        //game.make_move("e1", "b8");
-        game.make_move("d1", "b8");
-        game.make_move("d2", "b8");
-        game.make_move("e2", "b8");
-        game.make_move("f2", "b8");
-        game.make_move("f1", "b8");
+        game.make_move("a8", "d5");
+
         println!("{:?}", game);
-        game.get_possible_moves("e1");        
+        game.get_possible_moves("d5");        
 
         assert_eq!(game.get_game_state(), GameState::InProgress);
     }
