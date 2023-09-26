@@ -163,7 +163,7 @@ impl Game {
         if let Some(piece) = self.board[position]{
             match piece.role{
                 Roles::Pawn => match piece.colour {
-                    Colour::White => {                        
+                    Colour::White => { 
                         if position >= 8{
                             if self.board[position-8].is_none() {
                                 moves.push(self.numToChessPos(position-8));
@@ -184,7 +184,7 @@ impl Game {
                             }
                         }
                         if piece.hasMoved == false{
-                            if self.board[position-(8*2)].is_none(){
+                            if self.board[position-(8*2)].is_none() && self.board[position-8].is_none(){
                                 moves.push(self.numToChessPos(position-(8*2)));
                             }
                         }
@@ -210,7 +210,7 @@ impl Game {
                             }
                         }
                         if piece.hasMoved == false{
-                            if self.board[position+(8*2)].is_none(){
+                            if self.board[position+(8*2)].is_none() && self.board[position+8].is_none(){
                                 moves.push(self.numToChessPos(position+(8*2)));
                             }
                         }
@@ -250,7 +250,7 @@ impl Game {
                             }
                         }
                     }
-                }, //ordningen jag ska göra metodiken för possible moves
+                },
                 Roles::Rook => {
                     for i in 1..8{
                         let pIndex = position + 8*i;
@@ -303,7 +303,72 @@ impl Game {
                         }
                     }
                 },
-                Roles::Bishop => (),
+                Roles::Bishop => {
+                    for i in 1..8{
+                        let posNeg9 = position-9*i;
+                        if posNeg9 >= 0 && self.board[posNeg9].is_none(){
+                            moves.push(self.numToChessPos(posNeg9));
+                            if posNeg9 % 8 == 0 {
+                                break;
+                            }
+                        }
+                        else if self.board[posNeg9].unwrap().colour != piece.colour {
+                            moves.push(self.numToChessPos(posNeg9));
+                            break;
+                        }
+                        else if self.board[posNeg9].unwrap().colour == piece.colour {
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let posNeg7 = position-7*i;
+                        if posNeg7 >= 0 && self.board[posNeg7].is_none(){
+                            moves.push(self.numToChessPos(posNeg7));
+                            if posNeg7 % 8 == 0 {
+                                break;
+                            }
+                        }
+                        else if self.board[posNeg7].unwrap().colour != piece.colour {
+                            moves.push(self.numToChessPos(posNeg7));
+                            break;
+                        }
+                        else if self.board[posNeg7].unwrap().colour == piece.colour {
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let pos9 = position+9*i;
+                        if pos9 >= 0 && self.board[pos9].is_none(){
+                            moves.push(self.numToChessPos(pos9));
+                            if pos9 % 8 == 0 {
+                                break;
+                            }
+                        }
+                        else if self.board[pos9].unwrap().colour != piece.colour {
+                            moves.push(self.numToChessPos(pos9));
+                            break;
+                        }
+                        else if self.board[pos9].unwrap().colour == piece.colour {
+                            break;
+                        }
+                    }
+                    for i in 1..8{
+                        let pos7 = position+7*i;
+                        if pos7 >= 0 && self.board[pos7].is_none(){
+                            moves.push(self.numToChessPos(pos7));
+                            if pos7 % 8 == 0 {
+                                break;
+                            }
+                        }
+                        else if self.board[pos7].unwrap().colour != piece.colour {
+                            moves.push(self.numToChessPos(pos7));
+                            break;
+                        }
+                        else if self.board[pos7].unwrap().colour == piece.colour {
+                            break;
+                        }
+                    }      
+                },
                 Roles::Queen => (),
                 Roles::Knight => (),
                 
@@ -400,7 +465,7 @@ mod tests {
         let mut game = Game::new();
 
         println!("{:?}", game);
-        game.make_move("a8", "d5");
+        game.make_move("c8", "d5");
 
         println!("{:?}", game);
         game.get_possible_moves("d5");        
