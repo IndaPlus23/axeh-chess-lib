@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use core::num;
 use std::{fmt, iter::FlatMap, f32::consts::PI};
 
@@ -84,6 +85,13 @@ impl Game {
         }
     }
 
+    pub fn switch_colour(&mut self){
+        match self.activeColour {
+            Colour::White => self.activeColour = Colour::Black,
+            Colour::Black => self.activeColour = Colour::White
+        }
+    }
+
     pub fn chessPosToNum(&self, chess_position: &str) -> usize {
         let filePlaceholder = chess_position.chars().nth(0);
         let rankPlaceholder = chess_position.chars().nth(1);
@@ -131,15 +139,21 @@ impl Game {
     /// move a piece and return the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
         let from = self.chessPosToNum(_from);
-        let to = self.chessPosToNum(_to);
-
-        let movedPiece = self.board[from];
-
-        self.board[from] = None;
-
-        self.board[to] = movedPiece;
+        if let Some(piece) = self.board[from]{
+            if piece.colour == self.activeColour{
+                let to = self.chessPosToNum(_to);
+                let movedPiece = self.board[from];
+                self.board[from] = None;
+                self.board[to] = movedPiece;
+                self.switch_colour();
+                return Some(GameState::InProgress);
+            }else {
+                return Some(GameState::InProgress);
+            }     
+        }else {
+            return Some(GameState::InProgress);
+        }
         
-        Some(GameState::InProgress)
     }
 
     /// (Optional but recommended) Set the piece type that a pawn becames following a promotion.
@@ -156,6 +170,252 @@ impl Game {
     /// new positions of that piece. Don't forget to the rules for check. 
     /// 
     /// (optional) Implement en passant and castling.
+    
+    pub fn get_rook_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves: Vec<String> = Vec::new();
+        for i in 1..8{
+            let pIndex = position + 8*i;
+            if pIndex <= 63 && self.board[pIndex].is_none(){
+                moves.push(self.numToChessPos(pIndex))
+            } else if  pIndex <= 63 && self.board[pIndex].unwrap().colour != piece.colour{
+                moves.push(self.numToChessPos(pIndex));
+                break;
+            }else if  pIndex <= 63 && self.board[pIndex].unwrap().colour == piece.colour{
+                break;
+            }
+        }
+        for i in 1..8{
+            let nIndex:i32 = position as i32 - 8*i;
+            if nIndex >= 0 && self.board[nIndex as usize].is_none(){
+                moves.push(self.numToChessPos(nIndex as usize))
+            } else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour != piece.colour{
+                moves.push(self.numToChessPos(nIndex as usize));
+                break;
+            }else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour == piece.colour{
+                break;
+            }
+        }
+        for i in 1..8{
+            let rIndex = position + i;
+            if rIndex <= 63 && self.board[rIndex].is_none(){
+                moves.push(self.numToChessPos(rIndex));
+                if (rIndex+1) % 8 == 0{
+                    break;
+                }
+            } else if self.board[rIndex].unwrap().colour != piece.colour{
+                moves.push(self.numToChessPos(rIndex));
+                break;
+            }else if self.board[rIndex].unwrap().colour == piece.colour{
+                break;
+            }
+        }
+        for i in 1..8{
+            let lIndex:isize = position as isize - i;
+            if lIndex >= 0 && lIndex <= 63{
+                if self.board[lIndex as usize].is_none(){
+                    moves.push(self.numToChessPos(lIndex as usize));
+                }
+                else if self.board[lIndex as usize].unwrap().colour != piece.colour{
+                    moves.push(self.numToChessPos(lIndex as usize));
+                    break;
+                }else if self.board[lIndex as usize].unwrap().colour == piece.colour{
+                    break;
+                }
+                if lIndex % 8 == 0{
+                    break;
+                }
+            } 
+        }
+        moves
+    }
+    
+    pub fn get_bishop_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves: Vec<String> = Vec::new();
+        for i in 1..8{
+            let posNeg9:isize = position as isize -9*i;
+            if posNeg9 >= 0 {
+                let ref newPos = self.board[posNeg9 as usize];
+                if newPos.is_none(){
+                    moves.push(self.numToChessPos(posNeg9 as usize));
+                }
+                else if newPos.unwrap().colour != piece.colour {
+                    moves.push(self.numToChessPos(posNeg9 as usize));
+                    break;
+                }
+                else if newPos.unwrap().colour == piece.colour {
+                    break;
+                }
+                if posNeg9 % 8 == 0 {
+                    break;
+                }
+            }
+        }
+        for i in 1..8{
+            let posNeg7:isize = position as isize -7*i;
+            if posNeg7 >= 0 {
+                let ref newPos = self.board[posNeg7 as usize];
+                if newPos.is_none(){
+                    moves.push(self.numToChessPos(posNeg7 as usize));
+                    if (posNeg7+1) % 8 == 0 {
+                        break;
+                    }
+                }
+                else if newPos.unwrap().colour != piece.colour {
+                    moves.push(self.numToChessPos(posNeg7 as usize));
+                    break;
+                }
+                else if newPos.unwrap().colour == piece.colour {
+                    break;
+                }
+            }
+        }
+        for i in 1..8{
+            let pos9 = position+9*i;
+            if pos9 <= 63 {
+                let ref newPos = self.board[pos9];
+                if newPos.is_none(){
+                    moves.push(self.numToChessPos(pos9));
+                    if (pos9+1) % 8 == 0 {
+                        break;
+                    }
+                }
+                else if self.board[pos9].unwrap().colour != piece.colour {
+                    moves.push(self.numToChessPos(pos9));
+                    break;
+                }
+                else if self.board[pos9].unwrap().colour == piece.colour {
+                    break;
+                }  
+            }
+        }
+        for i in 1..8{
+            let pos7 = position+7*i;
+            if pos7 >= 0 {
+                let ref newPos = self.board[pos7];
+
+                if newPos.is_none(){
+                    moves.push(self.numToChessPos(pos7));
+                    if pos7 % 8 == 0 {
+                        break;
+                    }
+                }
+                else if newPos.unwrap().colour != piece.colour {
+                    moves.push(self.numToChessPos(pos7));
+                    break;
+                }
+                else if newPos.unwrap().colour == piece.colour {
+                    break;
+                }
+            }
+        } 
+        moves
+    }
+
+    pub fn get_king_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves: Vec<String> = Vec::new();
+        if position > 8 && position < 55 && position % 8 != 0 && (position+1) % 8 != 0{ //fall där kung inte nuddar kant
+            let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9];
+            for i in 0..list.len(){
+                let index:i16 = position as i16 + list[i];
+                if self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour{
+                    moves.push(self.numToChessPos(index as usize));
+                }
+            }
+        }else if (position >= 8 || position == 0) && position % 8 == 0{//fall där kung nuddar vänster kant
+            let list: [i16; 5] = [-8, -7, 1, 8, 9];
+            for i in 0..list.len(){
+                let index:i16 = position as i16 + list[i];
+                if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                    moves.push(self.numToChessPos(index as usize));
+                }
+            }
+        }else if (position > 8 || position == 7) && (position+1) % 8 == 0{//fall där kung nuddar vänster kant
+            let list: [i16; 5] = [-9, -8, -1, 7, 8];
+            for i in 0..list.len(){
+                let index:i16 = position as i16 + list[i];
+                if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                    moves.push(self.numToChessPos(index as usize));
+                }
+            }
+        }else{
+            let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9]; //resterande fall
+            for i in 0..list.len(){
+                let index:i16 = position as i16 + list[i];
+                if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
+                    moves.push(self.numToChessPos(index as usize));
+                }
+            }
+        }
+        moves
+    }
+
+    pub fn get_white_pawn_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves:Vec<String> = Vec::new();
+        if position >= 8{
+            if self.board[position-8].is_none() {
+                moves.push(self.numToChessPos(position-8));
+            }
+        }
+        if position >= 9{
+            if let Some(enePiece) = self.board[position-9]{
+                if enePiece.colour != piece.colour{
+                    moves.push(self.numToChessPos(position-9));
+                }
+            }
+        }
+        if position > 7{
+            if let Some(enePiece) = self.board[position-7]{
+                if enePiece.colour != piece.colour{
+                    moves.push(self.numToChessPos(position-7));
+                }
+            }
+        }
+        if piece.hasMoved == false{
+            if self.board[position-(8*2)].is_none() && self.board[position-8].is_none(){
+                moves.push(self.numToChessPos(position-(8*2)));
+            }
+        }
+        moves
+    }
+
+    pub fn get_black_pawn_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves: Vec<String> = Vec::new();
+        if (position + 8) <= 63 {
+            if self.board[position+8].is_none() {
+                moves.push(self.numToChessPos(position+8));
+            }
+        }
+        if (position+9) <= 63{
+            if let Some(enePiece) = self.board[position+9]{
+                if enePiece.colour != piece.colour{
+                    moves.push(self.numToChessPos(position+9));
+                }
+            }
+        }
+        if (position+7) < 63{
+            if let Some(enePiece) = self.board[position+7]{
+                if enePiece.colour != piece.colour{
+                    moves.push(self.numToChessPos(position+7));
+                }
+            }
+        }
+        if piece.hasMoved == false{
+            if self.board[position+(8*2)].is_none() && self.board[position+8].is_none(){
+                moves.push(self.numToChessPos(position+(8*2)));
+            }
+        }
+        moves
+    }
+    
+    pub fn get_knight_moves(&self, piece: Piece, position: usize) -> Vec<String>{
+        let mut moves: Vec<String> = Vec::new();
+
+        //kolla om  absolut värde((pos%8 - newPos%8)) är mer än 2 
+        
+
+        moves
+    }
+
     pub fn get_possible_moves(&self, _postion: &str) -> Option<Vec<String>> {
         let position = self.chessPosToNum(_postion);
         let mut moves: Vec<String> = Vec::new();
@@ -164,219 +424,33 @@ impl Game {
             match piece.role{
                 Roles::Pawn => match piece.colour {
                     Colour::White => { 
-                        if position >= 8{
-                            if self.board[position-8].is_none() {
-                                moves.push(self.numToChessPos(position-8));
-                            }
-                        }
-                        if position >= 9{
-                            if let Some(enePiece) = self.board[position-9]{
-                                if enePiece.colour != piece.colour{
-                                    moves.push(self.numToChessPos(position-9));
-                                }
-                            }
-                        }
-                        if position > 7{
-                            if let Some(enePiece) = self.board[position-7]{
-                                if enePiece.colour != piece.colour{
-                                    moves.push(self.numToChessPos(position-7));
-                                }
-                            }
-                        }
-                        if piece.hasMoved == false{
-                            if self.board[position-(8*2)].is_none() && self.board[position-8].is_none(){
-                                moves.push(self.numToChessPos(position-(8*2)));
-                            }
-                        }
+                        moves = self.get_white_pawn_moves(piece, position);
                     }
                     Colour::Black =>{
-                        if (position + 8) <= 63 {
-                            if self.board[position+8].is_none() {
-                                moves.push(self.numToChessPos(position+8));
-                            }
-                        }
-                        if (position+9) <= 63{
-                            if let Some(enePiece) = self.board[position+9]{
-                                if enePiece.colour != piece.colour{
-                                    moves.push(self.numToChessPos(position+9));
-                                }
-                            }
-                        }
-                        if (position+7) < 63{
-                            if let Some(enePiece) = self.board[position+7]{
-                                if enePiece.colour != piece.colour{
-                                    moves.push(self.numToChessPos(position+7));
-                                }
-                            }
-                        }
-                        if piece.hasMoved == false{
-                            if self.board[position+(8*2)].is_none() && self.board[position+8].is_none(){
-                                moves.push(self.numToChessPos(position+(8*2)));
-                            }
-                        }
+                        moves = self.get_black_pawn_moves(piece, position);
                     }
                 }
                 Roles::King => {
-                    if position > 8 && position < 55 && position % 8 != 0 && (position+1) % 8 != 0{ //fall där kung inte nuddar kant
-                        let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9];
-                        for i in 0..list.len(){
-                            let index:i16 = position as i16 + list[i];
-                            if self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour{
-                                moves.push(self.numToChessPos(index as usize));
-                            }
-                        }
-                    }else if (position >= 8 || position == 0) && position % 8 == 0{//fall där kung nuddar vänster kant
-                        let list: [i16; 5] = [-8, -7, 1, 8, 9];
-                        for i in 0..list.len(){
-                            let index:i16 = position as i16 + list[i];
-                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
-                                moves.push(self.numToChessPos(index as usize));
-                            }
-                        }
-                    }else if (position > 8 || position == 7) && (position+1) % 8 == 0{//fall där kung nuddar vänster kant
-                        let list: [i16; 5] = [-9, -8, -1, 7, 8];
-                        for i in 0..list.len(){
-                            let index:i16 = position as i16 + list[i];
-                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
-                                moves.push(self.numToChessPos(index as usize));
-                            }
-                        }
-                    }else{
-                        let list: [i16; 8] = [-9, -8, -7, -1, 1, 7, 8, 9]; //resterande fall
-                        for i in 0..list.len(){
-                            let index:i16 = position as i16 + list[i];
-                            if index >= 0 && index <= 63 && (self.board[index as usize].is_none() || self.board[index as usize].unwrap().colour != piece.colour){
-                                moves.push(self.numToChessPos(index as usize));
-                            }
-                        }
-                    }
+                    moves = self.get_king_moves(piece, position);
                 },
                 Roles::Rook => {
-                    for i in 1..8{
-                        let pIndex = position + 8*i;
-                        if pIndex <= 63 && self.board[pIndex].is_none(){
-                            moves.push(self.numToChessPos(pIndex))
-                        } else if  pIndex <= 63 && self.board[pIndex].unwrap().colour != piece.colour{
-                            moves.push(self.numToChessPos(pIndex));
-                            break;
-                        }else if  pIndex <= 63 && self.board[pIndex].unwrap().colour == piece.colour{
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let nIndex:i32 = position as i32 - 8*i;
-                        if nIndex >= 0 && self.board[nIndex as usize].is_none(){
-                            moves.push(self.numToChessPos(nIndex as usize))
-                        } else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour != piece.colour{
-                            moves.push(self.numToChessPos(nIndex as usize));
-                            break;
-                        }else if  nIndex >= 0 && self.board[nIndex as usize].unwrap().colour == piece.colour{
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let rIndex = position + i;
-                        if rIndex <= 63 && self.board[rIndex].is_none(){
-                            moves.push(self.numToChessPos(rIndex));
-                            if (rIndex+1) % 8 == 0{
-                                break;
-                            }
-                        } else if self.board[rIndex].unwrap().colour != piece.colour{
-                            moves.push(self.numToChessPos(rIndex));
-                            break;
-                        }else if self.board[rIndex].unwrap().colour == piece.colour{
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let lIndex = position - i;
-                        if lIndex <= 63 && self.board[lIndex].is_none(){
-                            moves.push(self.numToChessPos(lIndex));
-                            if lIndex % 8 == 0{
-                                break;
-                            }
-                        } else if self.board[lIndex].unwrap().colour != piece.colour{
-                            moves.push(self.numToChessPos(lIndex));
-                            break;
-                        }else if self.board[lIndex].unwrap().colour == piece.colour{
-                            break;
-                        }
-                    }
+                    moves = self.get_rook_moves(piece, position);
                 },
                 Roles::Bishop => {
-                    for i in 1..8{
-                        let posNeg9 = position-9*i;
-                        if posNeg9 >= 0 && self.board[posNeg9].is_none(){
-                            moves.push(self.numToChessPos(posNeg9));
-                            if posNeg9 % 8 == 0 {
-                                break;
-                            }
-                        }
-                        else if self.board[posNeg9].unwrap().colour != piece.colour {
-                            moves.push(self.numToChessPos(posNeg9));
-                            break;
-                        }
-                        else if self.board[posNeg9].unwrap().colour == piece.colour {
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let posNeg7 = position-7*i;
-                        if posNeg7 >= 0 && self.board[posNeg7].is_none(){
-                            moves.push(self.numToChessPos(posNeg7));
-                            if posNeg7 % 8 == 0 {
-                                break;
-                            }
-                        }
-                        else if self.board[posNeg7].unwrap().colour != piece.colour {
-                            moves.push(self.numToChessPos(posNeg7));
-                            break;
-                        }
-                        else if self.board[posNeg7].unwrap().colour == piece.colour {
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let pos9 = position+9*i;
-                        if pos9 >= 0 && self.board[pos9].is_none(){
-                            moves.push(self.numToChessPos(pos9));
-                            if pos9 % 8 == 0 {
-                                break;
-                            }
-                        }
-                        else if self.board[pos9].unwrap().colour != piece.colour {
-                            moves.push(self.numToChessPos(pos9));
-                            break;
-                        }
-                        else if self.board[pos9].unwrap().colour == piece.colour {
-                            break;
-                        }
-                    }
-                    for i in 1..8{
-                        let pos7 = position+7*i;
-                        if pos7 >= 0 && self.board[pos7].is_none(){
-                            moves.push(self.numToChessPos(pos7));
-                            if pos7 % 8 == 0 {
-                                break;
-                            }
-                        }
-                        else if self.board[pos7].unwrap().colour != piece.colour {
-                            moves.push(self.numToChessPos(pos7));
-                            break;
-                        }
-                        else if self.board[pos7].unwrap().colour == piece.colour {
-                            break;
-                        }
-                    }      
+                    moves = self.get_bishop_moves(piece, position);
                 },
-                Roles::Queen => (),
-                Roles::Knight => (),
-                
+                Roles::Queen => {
+                    let mut rMoves: Vec<String> = self.get_rook_moves(piece, position);
+                    let mut bMoves: Vec<String> = self.get_bishop_moves(piece, position);
+                    rMoves.append(&mut bMoves);
+
+                    moves = rMoves;
+                },
+                Roles::Knight => {
+                    moves = self.get_knight_moves(piece, position);
+                },
             }
         }
-
-        println!("Possible moves for king at {}: {:?}", _postion, moves);
-        //kolla vilken pjäs som är på positionen, ställ upp match för pjäsen, moved på pawn
         Some(moves)
     }
 }
@@ -465,10 +539,13 @@ mod tests {
         let mut game = Game::new();
 
         println!("{:?}", game);
-        game.make_move("c8", "d5");
+        game.make_move("e1", "h5");
 
         println!("{:?}", game);
-        game.get_possible_moves("d5");        
+        let x = game.get_possible_moves("h5");
+        println!("Possible moves: {:?}", x.unwrap());
+
+        
 
         assert_eq!(game.get_game_state(), GameState::InProgress);
     }
