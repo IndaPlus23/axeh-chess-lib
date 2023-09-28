@@ -20,11 +20,10 @@ pub enum Roles{ //Olika roller som en pjäs kan ha
     King, Queen, Knight, Bishop, Rook, Pawn
 }
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Piece{ //en pjäs har en roll och en färg
+pub struct Piece{ //en pjäs har en roll och en färg och har antingen rört sig eller inte
     role: Roles,
     colour: Colour, 
     hasMoved: bool
-    //lägg till moved
 }
 
 impl Piece {
@@ -35,7 +34,9 @@ impl Piece {
             hasMoved
         }
     }
-    
+    fn changeMoved(&mut self){
+        self.hasMoved = true;
+    }
 }
 /* IMPORTANT:
  * - Document well!
@@ -135,18 +136,46 @@ impl Game {
         chessPos   
     }
 
+    pub fn get_legal_moves(&mut self, _postion: &str) -> Option<Vec<String>>{
+        let mut moves = self.get_possible_moves(_postion).unwrap();
+        let pos = self.chessPosToNum(_postion);
+
+        for i in 0..moves.len(){
+            let newPos = self.chessPosToNum(&moves[i]);
+            let newS = moves[i].to_string();
+            let mut fakeBoard = self.board;
+            if let Some(piece) = fakeBoard[pos]{
+                fakeBoard[newPos] = Some(piece);
+                fakeBoard[pos] = None;
+                if self.is_king_in_check(&fakeBoard, self.activeColour){
+                    moves.retain(|s| s != &newS)
+                }
+            }
+        }
+        Some(moves)
+    }
+
     /// If the current game state is `InProgress` and the move is legal, 
     /// move a piece and return the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
         let from = self.chessPosToNum(_from);
-        if let Some(piece) = self.board[from]{
+        let moves = self.get_legal_moves(_from);
+        if let Some(mut piece) = self.board[from]{
             if piece.colour == self.activeColour{
-                let to = self.chessPosToNum(_to);
-                let movedPiece = self.board[from];
-                self.board[from] = None;
-                self.board[to] = movedPiece;
-                self.switch_colour();
-                return Some(GameState::InProgress);
+                if moves.as_ref().map(|vec| vec.iter().any(|s| s == _to)).unwrap_or(false){
+                    let to = self.chessPosToNum(_to);
+                    self.board[to] = Some(piece);
+                    self.board[from] = None;
+                    piece.changeMoved(); //detta ändrar inte värdet för fuck u
+                    self.switch_colour();
+                    if self.is_king_in_check(&self.board, self.activeColour){
+                        return Some(GameState::Check);
+                    }else {
+                        return Some(GameState::InProgress);
+                    }
+                }else {
+                    return Some(GameState::InProgress);
+                }
             }else {
                 return Some(GameState::InProgress);
             }     
@@ -171,6 +200,117 @@ impl Game {
     /// 
     /// (optional) Implement en passant and castling.
     
+    pub fn is_king_in_check(&self, board: &[Option<Piece>], king_colour: Colour) -> bool {
+        // Find the king's position on the board
+        let king_position = board.iter().position(|square| {
+            if let Some(piece) = square {
+                piece.role == Roles::King && piece.colour == king_colour
+            } else {
+                false
+            }
+        });
+    
+        if let Some(king_position) = king_position {
+            let king_x = king_position % 8;
+            let king_y = king_position / 8;
+    
+            let directions = [
+                (-1, -1), (-1, 0), (-1, 1),
+                (0, -1),           (0, 1),
+                (1, -1), (1, 0), (1, 1),
+            ];
+    
+            for (dx, dy) in &directions {
+                let mut x = king_x as i32 + dx;
+                let mut y = king_y as i32 + dy;
+    
+                while x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    let position = (y * 8 + x) as usize;
+                    if let Some(piece) = board[position] {
+                        if piece.colour != king_colour {
+                            match piece.role {
+                                Roles::Queen | Roles::Bishop => return true,
+                                _ => break,
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    x += dx;
+                    y += dy;
+                }
+            }
+    
+            // Check for attacks by rooks and queens along horizontal and vertical lines
+            let rook_directions = [
+                (0, -1), (0, 1), (-1, 0), (1, 0),
+            ];
+    
+            for (dx, dy) in &rook_directions {
+                let mut x = king_x as i32 + dx;
+                let mut y = king_y as i32 + dy;
+    
+                while x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    let position = (y * 8 + x) as usize;
+                    if let Some(piece) = board[position] {
+                        if piece.colour != king_colour {
+                            match piece.role {
+                                Roles::Queen | Roles::Rook => return true,
+                                _ => break,
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    x += dx;
+                    y += dy;
+                }
+            }
+    
+            // Check for attacks by knights
+            let knight_moves = [
+                (-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1),
+            ];
+    
+            for &(dx, dy) in &knight_moves {
+                let x = king_x as i32 + dx;
+                let y = king_y as i32 + dy;
+    
+                if x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    let position = (y * 8 + x) as usize;
+                    if let Some(piece) = board[position] {
+                        if piece.colour != king_colour && piece.role == Roles::Knight {
+                            return true;
+                        }
+                    }
+                }
+            }
+    
+            // Check for attacks by pawns
+            let pawn_moves = if king_colour == Colour::White {
+                [(1, -1), (1, 1)]
+            } else {
+                [(-1, -1), (-1, 1)]
+            };
+    
+            for &(dx, dy) in &pawn_moves {
+                let x = king_x as i32 + dx;
+                let y = king_y as i32 + dy;
+    
+                if x >= 0 && x < 8 && y >= 0 && y < 8 {
+                    let position = (y * 8 + x) as usize;
+                    if let Some(piece) = board[position] {
+                        if piece.colour != king_colour && piece.role == Roles::Pawn {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    
+        false
+    }
+
     pub fn get_rook_moves(&self, piece: Piece, position: usize) -> Vec<String>{
         let mut moves: Vec<String> = Vec::new();
         for i in 1..8{
@@ -409,8 +549,18 @@ impl Game {
     
     pub fn get_knight_moves(&self, piece: Piece, position: usize) -> Vec<String>{
         let mut moves: Vec<String> = Vec::new();
-
-        //kolla om  absolut värde((pos%8 - newPos%8)) är mer än 2 
+        let pos:isize = position as isize;
+        let target:Vec<isize> = [-17, -15, -10, -6, 6, 10, 15, 17].to_vec();
+        let ref board = self.board;
+         
+        for i in 0..target.len(){
+            let newPos = pos + target[i];
+            if newPos <= 63 && newPos >= 0 && ((pos%8)-(newPos%8)).abs() <= 2{
+                if board[newPos as usize].is_none() || board[newPos as usize].unwrap().colour != piece.colour{
+                    moves.push(self.numToChessPos(newPos as usize));
+                } 
+            }
+        }
         
 
         moves
@@ -539,14 +689,12 @@ mod tests {
         let mut game = Game::new();
 
         println!("{:?}", game);
-        game.make_move("e1", "h5");
+
+        assert_eq!(game.make_move("a2", "a4").unwrap(), GameState::InProgress);
 
         println!("{:?}", game);
-        let x = game.get_possible_moves("h5");
-        println!("Possible moves: {:?}", x.unwrap());
-
         
-
+        assert_eq!(game.get_possible_moves("a4").unwrap(), ["a5"]); //detta ger fel då hasMoved inte ändras så den är alltid false
         assert_eq!(game.get_game_state(), GameState::InProgress);
     }
 }
