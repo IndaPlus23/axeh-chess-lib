@@ -160,10 +160,10 @@ impl Game {
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
         let from = self.chessPosToNum(_from);
         let moves = self.get_legal_moves(_from);
-        if moves.as_ref().unwrap().is_empty() && self.is_king_in_check(&self.board, self.activeColour){
+        /*if moves.as_ref().unwrap().is_empty() && self.is_king_in_check(&self.board, self.activeColour){
             return Some(GameState::Checkmate);
         }
-        else if let Some(mut piece) = self.board[from]{
+        else */if let Some(mut piece) = self.board[from]{
             if piece.colour == self.activeColour{
                 if moves.as_ref().map(|vec| vec.iter().any(|s| s == _to)).unwrap_or(false){
                     let to = self.chessPosToNum(_to);
