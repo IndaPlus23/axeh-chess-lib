@@ -569,7 +569,7 @@ impl Game {
         moves
     }
 
-    pub fn get_possible_moves(&self, _postion: &str) -> Option<Vec<String>> {
+    pub fn get_possible_moves(&self, _postion: &str) -> Option<Vec<String>> { //returns all possible moves not all legal moves
         let position = self.chessPosToNum(_postion);
         let mut moves: Vec<String> = Vec::new();
 
