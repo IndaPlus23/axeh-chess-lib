@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(warnings)]
 use core::num;
 use std::{fmt, iter::FlatMap, f32::consts::PI};
 
@@ -8,21 +8,21 @@ use std::{fmt, iter::FlatMap, f32::consts::PI};
 pub enum GameState { //Olika faser som spelet kan befinna sig i
     InProgress,
     Check,
-    GameOver,
+    Stalemate,
     Checkmate
 }
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Colour{ //De olika färger som spelaren kan köra som samt de färger som en pjäs kan vara
     Black, White
 }
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Roles{ //Olika roller som en pjäs kan ha
     King, Queen, Knight, Bishop, Rook, Pawn
 }
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Piece{ //en pjäs har en roll och en färg och har antingen rört sig eller inte
-    role: Roles,
-    colour: Colour, 
+    pub role: Roles,
+    pub colour: Colour, 
     hasMoved: bool
 }
 
@@ -34,7 +34,7 @@ impl Piece {
             hasMoved
         }
     }
-    fn changeMoved(mut self){
+    fn changeMoved(&mut self){
         self.hasMoved = true;
     }
 }
@@ -46,8 +46,8 @@ impl Piece {
 pub struct Game { //Spelet befinner sig i olika faser där det alltid är en färgs tur. Spelet representeras av ett bräde
     /* save board, active colour, ... */
     state: GameState,
-    activeColour: Colour,
-    board: [Option<Piece>; 64],
+    pub activeColour: Colour,
+    pub board: [Option<Piece>; 64],
     //...
 }
 
@@ -139,51 +139,73 @@ impl Game {
     pub fn get_legal_moves(&mut self, _postion: &str) -> Option<Vec<String>>{
         let mut moves = self.get_possible_moves(_postion).unwrap();
         let pos = self.chessPosToNum(_postion);
+        let mut new_moves = Vec::new();
 
         for i in 0..moves.len(){
             let newPos = self.chessPosToNum(&moves[i]);
             let newS = moves[i].to_string();
-            let mut fakeBoard = self.board;
+            let mut fakeBoard = self.board.clone();
             if let Some(piece) = fakeBoard[pos]{
                 fakeBoard[newPos] = Some(piece);
                 fakeBoard[pos] = None;
-                if self.is_king_in_check(&fakeBoard, self.activeColour){
-                    moves.retain(|s| s != &newS)
+                if !self.is_king_in_check(&fakeBoard, self.activeColour){
+                    new_moves.push(moves[i].clone());
                 }
             }
         }
-        Some(moves)
+        return Some(new_moves);
     }
 
     /// If the current game state is `InProgress` and the move is legal, 
     /// move a piece and return the resulting state of the game.
     pub fn make_move(&mut self, _from: &str, _to: &str) -> Option<GameState> {
+        let mut current_state = self.state;
         let from = self.chessPosToNum(_from);
         let moves = self.get_legal_moves(_from);
         if let Some(mut piece) = self.board[from]{
             if piece.colour == self.activeColour{
                 if moves.as_ref().map(|vec| vec.iter().any(|s| s == _to)).unwrap_or(false){
                     let to = self.chessPosToNum(_to);
+                    piece.hasMoved = true;
                     self.board[to] = Some(piece);
                     self.board[from] = None;
-                    piece.changeMoved(); //detta ändrar inte värdet för fuck u
                     self.switch_colour();
                     if self.is_king_in_check(&self.board, self.activeColour){
-                        return Some(GameState::Check);
+                        current_state = GameState::Check
                     }else {
-                        return Some(GameState::InProgress);
+                        current_state = GameState::InProgress
                     }
                 }else {
-                    return Some(GameState::InProgress);
+                    current_state = GameState::InProgress
                 }
             }else {
-                return Some(GameState::InProgress);
-            }     
+                current_state = GameState::InProgress            
+            }  
         }else {
-            return Some(GameState::InProgress);
+            current_state = GameState::InProgress
         }
-        
+
+        // look for check- or stalemate
+        for piece_index in 0..=63 {
+            if self.board[piece_index].is_some() && self.board[piece_index].unwrap().colour == self.activeColour {
+                let moves = self.get_legal_moves(&self.numToChessPos(piece_index));
+                if moves.is_some() && moves.unwrap().len() > 0 {
+                    return Some(current_state)
+                }
+            }
+        }
+    
+
+        if current_state == GameState::Check {
+            current_state = GameState::Checkmate;
+            self.state = GameState::Checkmate;
+        } else {
+            current_state = GameState::Stalemate;
+            self.state = GameState::Stalemate;
+        }
+        return Some(current_state);
     }
+
 
     /// (Optional but recommended) Set the piece type that a pawn becames following a promotion.
     pub fn set_promotion(&mut self, _piece: &str) -> () {
@@ -209,15 +231,21 @@ impl Game {
                 false
             }
         });
+        let mut doodoo = false;
+        if board[5+8].is_some() {
+            if board[5+8].unwrap().role == Roles::King {
+                doodoo = true;
+            }
+        }
     
         if let Some(king_position) = king_position {
             let king_x = king_position % 8;
             let king_y = king_position / 8;
     
             let directions = [
-                (-1, -1), (-1, 0), (-1, 1),
-                (0, -1),           (0, 1),
-                (1, -1), (1, 0), (1, 1),
+                (-1, -1), (0, 0), (-1, 1),
+                (0, 0),           (0, 0),
+                (1, -1), (0, 0), (1, 1),
             ];
     
             for (dx, dy) in &directions {
@@ -285,7 +313,7 @@ impl Game {
                     }
                 }
             }
-    
+
             // Check for attacks by pawns
             let pawn_moves = if king_colour == Colour::White {
                 [(1, -1), (1, 1)]
@@ -294,8 +322,8 @@ impl Game {
             };
     
             for &(dx, dy) in &pawn_moves {
-                let x = king_x as i32 + dx;
-                let y = king_y as i32 + dy;
+                let x = king_x as i32 - dx;
+                let y = king_y as i32 - dy;
     
                 if x >= 0 && x < 8 && y >= 0 && y < 8 {
                     let position = (y * 8 + x) as usize;
@@ -313,17 +341,19 @@ impl Game {
 
     pub fn get_rook_moves(&self, piece: Piece, position: usize) -> Vec<String>{
         let mut moves: Vec<String> = Vec::new();
+        //down
         for i in 1..8{
             let pIndex = position + 8*i;
             if pIndex <= 63 && self.board[pIndex].is_none(){
                 moves.push(self.numToChessPos(pIndex))
-            } else if  pIndex <= 63 && self.board[pIndex].unwrap().colour != piece.colour{
+            } else if  pIndex <= 63 && self.board[pIndex].unwrap().colour != piece.colour {
                 moves.push(self.numToChessPos(pIndex));
                 break;
-            }else if  pIndex <= 63 && self.board[pIndex].unwrap().colour == piece.colour{
+            }else if  pIndex <= 63 && self.board[pIndex].unwrap().colour == piece.colour {
                 break;
             }
         }
+        //up
         for i in 1..8{
             let nIndex:i32 = position as i32 - 8*i;
             if nIndex >= 0 && self.board[nIndex as usize].is_none(){
@@ -335,22 +365,26 @@ impl Game {
                 break;
             }
         }
+        //right
         for i in 1..8{
             let rIndex = position + i;
+            if rIndex % 8 == 0 {break;}
             if rIndex <= 63 && self.board[rIndex].is_none(){
                 moves.push(self.numToChessPos(rIndex));
                 if (rIndex+1) % 8 == 0{
                     break;
                 }
-            } else if self.board[rIndex].unwrap().colour != piece.colour{
+            } else if rIndex <= 63 && self.board[rIndex].unwrap().colour != piece.colour{
                 moves.push(self.numToChessPos(rIndex));
                 break;
-            }else if self.board[rIndex].unwrap().colour == piece.colour{
+            }else if rIndex <= 63 && self.board[rIndex].unwrap().colour == piece.colour{
                 break;
             }
         }
+        //left
         for i in 1..8{
             let lIndex:isize = position as isize - i;
+            if lIndex % 8 == 7 {break;}
             if lIndex >= 0 && lIndex <= 63{
                 if self.board[lIndex as usize].is_none(){
                     moves.push(self.numToChessPos(lIndex as usize));
@@ -373,6 +407,7 @@ impl Game {
         let mut moves: Vec<String> = Vec::new();
         for i in 1..8{
             let posNeg9:isize = position as isize -9*i;
+            if posNeg9 % 8 == 7 {break;}
             if posNeg9 >= 0 {
                 let ref newPos = self.board[posNeg9 as usize];
                 if newPos.is_none(){
@@ -392,6 +427,7 @@ impl Game {
         }
         for i in 1..8{
             let posNeg7:isize = position as isize -7*i;
+            if posNeg7 % 8 == 0 {break;}
             if posNeg7 >= 0 {
                 let ref newPos = self.board[posNeg7 as usize];
                 if newPos.is_none(){
@@ -411,6 +447,7 @@ impl Game {
         }
         for i in 1..8{
             let pos9 = position+9*i;
+            if pos9 % 8 == 0 {break;}
             if pos9 <= 63 {
                 let ref newPos = self.board[pos9];
                 if newPos.is_none(){
@@ -430,7 +467,8 @@ impl Game {
         }
         for i in 1..8{
             let pos7 = position+7*i;
-            if pos7 >= 0 {
+            if pos7 % 8 == 7 {break;}
+            if pos7 >= 0 && pos7 <= 63 {
                 let ref newPos = self.board[pos7];
 
                 if newPos.is_none(){
@@ -498,14 +536,14 @@ impl Game {
         }
         if position >= 9{
             if let Some(enePiece) = self.board[position-9]{
-                if enePiece.colour != piece.colour{
+                if enePiece.colour != piece.colour && (position-9) % 8 != 7 {
                     moves.push(self.numToChessPos(position-9));
                 }
             }
         }
         if position > 7{
             if let Some(enePiece) = self.board[position-7]{
-                if enePiece.colour != piece.colour{
+                if enePiece.colour != piece.colour && (position-7) % 8 != 0{
                     moves.push(self.numToChessPos(position-7));
                 }
             }
@@ -527,14 +565,14 @@ impl Game {
         }
         if (position+9) <= 63{
             if let Some(enePiece) = self.board[position+9]{
-                if enePiece.colour != piece.colour{
+                if enePiece.colour != piece.colour && (position+9) % 8 != 0 {
                     moves.push(self.numToChessPos(position+9));
                 }
             }
         }
         if (position+7) < 63{
             if let Some(enePiece) = self.board[position+7]{
-                if enePiece.colour != piece.colour{
+                if enePiece.colour != piece.colour && (position+7) % 8 != 7 {
                     moves.push(self.numToChessPos(position+7));
                 }
             }
